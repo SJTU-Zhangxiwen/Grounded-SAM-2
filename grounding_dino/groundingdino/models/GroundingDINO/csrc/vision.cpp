@@ -2,6 +2,10 @@
 
 #include "MsDeformAttn/ms_deform_attn.h"
 
+#include <sstream>
+#include <string>
+#include <torch/extension.h>
+
 namespace groundingdino {
 
 #ifdef WITH_CUDA

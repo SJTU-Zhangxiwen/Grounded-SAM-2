@@ -22,17 +22,17 @@
 
 import glob
 import os
-import subprocess
-
+import re
 import subprocess
 import sys
-import re
+
 
 def install_torch():
     try:
         import torch
     except ImportError:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "torch"])
+
 
 # Call the function to ensure torch is installed
 install_torch()
@@ -49,7 +49,11 @@ cwd = os.path.dirname(os.path.abspath(__file__))
 
 sha = "Unknown"
 try:
-    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=cwd).decode("ascii").strip()
+    sha = (
+        subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=cwd)
+        .decode("ascii")
+        .strip()
+    )
 except Exception:
     pass
 
@@ -68,7 +72,9 @@ torch_ver = [int(x) for x in torch.__version__.split(".")[:2]]
 
 def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    extensions_dir = os.path.join(this_dir, "groundingdino", "models", "GroundingDINO", "csrc")
+    extensions_dir = os.path.join(
+        this_dir, "groundingdino", "models", "GroundingDINO", "csrc"
+    )
 
     main_source = os.path.join(extensions_dir, "vision.cpp")
     sources = glob.glob(os.path.join(extensions_dir, "**", "*.cpp"))
@@ -83,7 +89,9 @@ def get_extensions():
     extra_compile_args = {"cxx": []}
     define_macros = []
 
-    if CUDA_HOME is not None and (torch.cuda.is_available() or "TORCH_CUDA_ARCH_LIST" in os.environ):
+    if CUDA_HOME is not None and (
+        torch.cuda.is_available() or "TORCH_CUDA_ARCH_LIST" in os.environ
+    ):
         print("Compiling with CUDA")
         extension = CUDAExtension
         sources += source_cuda
@@ -93,26 +101,9 @@ def get_extensions():
             "-D__CUDA_NO_HALF_OPERATORS__",
             "-D__CUDA_NO_HALF_CONVERSIONS__",
             "-D__CUDA_NO_HALF2_OPERATORS__",
-            "-gencode=arch=compute_70,code=sm_70",
-            "-gencode=arch=compute_75,code=sm_75",
-            "-gencode=arch=compute_80,code=sm_80",
-            "-gencode=arch=compute_86,code=sm_86",
+            "-allow-unsupported-compiler",
+            "-gencode=arch=compute_120,code=sm_120",
         ]
-        cuda_version = None
-        try:
-            nvcc_output = subprocess.check_output([os.path.join(CUDA_HOME, "bin", "nvcc"), "--version"]).decode("utf-8")
-            match = re.search(r"release (\d+\.\d+)", nvcc_output)
-            if match:
-                cuda_version = float(match.group(1))
-                print(f"Detected CUDA version: {cuda_version}")
-        except Exception as e:
-            print(f"Warning: Could not detect CUDA version: {e}")
-        # sm_120: supported since CUDA 12.8 (RTX 5090, Blackwell)
-        if cuda_version is not None and cuda_version >= 12.8:
-            extra_compile_args["nvcc"].append("-gencode=arch=compute_120,code=sm_120")  # RTX 5090
-        elif cuda_version is not None and cuda_version < 12.8:
-            print(" WARNING: CUDA version < 12.8 detected. RTX 5090/Blackwell (sm_120) will NOT be supported.")
-            print(" To use RTX 5090 or Blackwell GPUs, please upgrade to CUDA 12.8 or higher and recompile.")
     else:
         print("Compiling without CUDA")
         define_macros += [("WITH_HIP", None)]
@@ -149,7 +140,6 @@ def parse_requirements(fname="requirements.txt", with_version=True):
     CommandLine:
         python -c "import setup; print(setup.parse_requirements())"
     """
-    import re
     import sys
     from os.path import exists
 

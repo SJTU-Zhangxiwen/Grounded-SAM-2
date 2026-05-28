@@ -12,10 +12,10 @@
 #include "ms_deform_im2col_cuda.cuh"
 
 #include <ATen/ATen.h>
+#include <ATen/Dispatch.h>
 #include <ATen/cuda/CUDAContext.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <torch/extension.h>
 #include <torch/version.h>
 
 // Check PyTorch version and define appropriate macros
@@ -77,13 +77,13 @@ at::Tensor ms_deform_attn_cuda_forward(
         auto columns = output_n.select(0, n);
         AT_DISPATCH_FLOATING_TYPES(GET_TENSOR_TYPE(value), "ms_deform_attn_forward_cuda", ([&] {
             ms_deformable_im2col_cuda(at::cuda::getCurrentCUDAStream(),
-                value.data<scalar_t>() + n * im2col_step_ * per_value_size,
-                spatial_shapes.data<int64_t>(),
-                level_start_index.data<int64_t>(),
-                sampling_loc.data<scalar_t>() + n * im2col_step_ * per_sample_loc_size,
-                attn_weight.data<scalar_t>() + n * im2col_step_ * per_attn_weight_size,
+                value.data_ptr<scalar_t>() + n * im2col_step_ * per_value_size,
+                spatial_shapes.data_ptr<int64_t>(),
+                level_start_index.data_ptr<int64_t>(),
+                sampling_loc.data_ptr<scalar_t>() + n * im2col_step_ * per_sample_loc_size,
+                attn_weight.data_ptr<scalar_t>() + n * im2col_step_ * per_attn_weight_size,
                 batch_n, spatial_size, num_heads, channels, num_levels, num_query, num_point,
-                columns.data<scalar_t>());
+                columns.data_ptr<scalar_t>());
 
         }));
     }
@@ -147,16 +147,16 @@ std::vector<at::Tensor> ms_deform_attn_cuda_backward(
         auto grad_output_g = grad_output_n.select(0, n);
         AT_DISPATCH_FLOATING_TYPES(GET_TENSOR_TYPE(value), "ms_deform_attn_backward_cuda", ([&] {
             ms_deformable_col2im_cuda(at::cuda::getCurrentCUDAStream(),
-                                    grad_output_g.data<scalar_t>(),
-                                    value.data<scalar_t>() + n * im2col_step_ * per_value_size,
-                                    spatial_shapes.data<int64_t>(),
-                                    level_start_index.data<int64_t>(),
-                                    sampling_loc.data<scalar_t>() + n * im2col_step_ * per_sample_loc_size,
-                                    attn_weight.data<scalar_t>() + n * im2col_step_ * per_attn_weight_size,
+                                    grad_output_g.data_ptr<scalar_t>(),
+                                    value.data_ptr<scalar_t>() + n * im2col_step_ * per_value_size,
+                                    spatial_shapes.data_ptr<int64_t>(),
+                                    level_start_index.data_ptr<int64_t>(),
+                                    sampling_loc.data_ptr<scalar_t>() + n * im2col_step_ * per_sample_loc_size,
+                                    attn_weight.data_ptr<scalar_t>() + n * im2col_step_ * per_attn_weight_size,
                                     batch_n, spatial_size, num_heads, channels, num_levels, num_query, num_point,
-                                    grad_value.data<scalar_t>() +  n * im2col_step_ * per_value_size,
-                                    grad_sampling_loc.data<scalar_t>() + n * im2col_step_ * per_sample_loc_size,
-                                    grad_attn_weight.data<scalar_t>() + n * im2col_step_ * per_attn_weight_size);
+                                    grad_value.data_ptr<scalar_t>() +  n * im2col_step_ * per_value_size,
+                                    grad_sampling_loc.data_ptr<scalar_t>() + n * im2col_step_ * per_sample_loc_size,
+                                    grad_attn_weight.data_ptr<scalar_t>() + n * im2col_step_ * per_attn_weight_size);
 
         }));
     }

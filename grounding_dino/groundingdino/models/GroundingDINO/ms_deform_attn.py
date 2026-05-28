@@ -70,6 +70,7 @@ class MultiScaleDeformableAttnFunction(Function):
     @staticmethod
     @once_differentiable
     def backward(ctx, grad_output):
+        grad_output = grad_output.contiguous()
         (
             value,
             value_spatial_shapes,
